@@ -1,0 +1,39 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Client {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  firstName String
+  lastName  String
+
+  company   Company?
+
+  createdAt DateTime @default(now())
+}
+
+model Company {
+  id        String  @id @default(uuid())
+  name      String
+  address   String
+
+  clientId  String  @unique
+  client    Client  @relation(fields: [clientId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model InvoiceLog {
+  id        String   @id @default(uuid())
+  email     String
+  payload   Json
+  status    String   // RECEIVED | PDF_GENERATED | SENT | FAILED
+
+  createdAt DateTime @default(now())
+}
