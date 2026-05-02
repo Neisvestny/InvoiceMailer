@@ -1,29 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import PDFDocument from 'pdfkit';
-
-export interface InvoiceData {
-	invoiceNumber: string;
-	issuedAt: Date;
-	client: {
-		firstName: string;
-		lastName: string;
-		email: string;
-		company: {
-			name: string;
-			address: string;
-		} | null;
-	};
-	items: Array<{ description: string; amount: number }>;
-	total: number;
-}
-
-const SENDER = {
-	name: 'InvoiceMailer LLC',
-	address: '123 Business Ave, Suite 100',
-	city: 'New York, NY 10001',
-	email: 'billing@invoicemailer.com',
-	phone: '+1 (555) 000-0000',
-};
+import { InvoiceData, SenderConfig } from '../../types';
 
 const COLORS = {
 	primary: '#1a1a2e',
@@ -38,6 +16,11 @@ const COLORS = {
 @Injectable()
 export class PdfService {
 	private readonly logger = new Logger(PdfService.name);
+	private readonly sender: SenderConfig;
+
+	constructor(@Inject(ConfigService) private readonly config: ConfigService) {
+		this.sender = this.config.get<SenderConfig>('sender')!;
+	}
 
 	private calculateHeight(itemCount: number): number {
 		const HEADER_H = 200; // шапка + FROM блок
@@ -82,7 +65,7 @@ export class PdfService {
 	}
 
 	async saveForPreview(buffer: Buffer, filename: string): Promise<void> {
-		if (process.env.NODE_ENV !== 'development') return;
+		if (this.config.get<string>('NODE_ENV') !== 'development') return;
 
 		const fs = await import('fs/promises');
 		const path = await import('path');
@@ -115,9 +98,7 @@ export class PdfService {
 		doc.fillColor(COLORS.white)
 			.fontSize(26)
 			.font('Helvetica-Bold')
-			.text('InvoiceMailer', 50, 23, {
-				continued: false,
-			});
+			.text(this.sender.brand, 50, 23, { continued: false });
 
 		// Invoice label + number
 		doc.fontSize(10)
@@ -138,14 +119,14 @@ export class PdfService {
 		doc.fillColor(COLORS.text)
 			.fontSize(11)
 			.font('Helvetica-Bold')
-			.text(SENDER.name, 50, 124)
+			.text(this.sender.name, 50, 124)
 			.font('Helvetica')
 			.fontSize(9)
 			.fillColor(COLORS.muted)
-			.text(SENDER.address, 50, 140)
-			.text(SENDER.city, 50, 153)
-			.text(SENDER.email, 50, 166)
-			.text(SENDER.phone, 50, 179);
+			.text(this.sender.address, 50, 140)
+			.text(this.sender.city, 50, 153)
+			.text(this.sender.email, 50, 166)
+			.text(this.sender.phone, 50, 179);
 
 		// Issue date
 		const dateStr = data.issuedAt.toLocaleDateString('en-US', {
@@ -287,13 +268,13 @@ export class PdfService {
 		doc.fillColor(COLORS.white)
 			.fontSize(11)
 			.font('Helvetica-Bold')
-			.text(SENDER.name, 30, contentY);
+			.text(this.sender.name, 30, contentY);
 
 		doc.fillColor(COLORS.border)
 			.fontSize(7)
 			.font('Helvetica')
-			.text(SENDER.address, 30, contentY + 14)
-			.text(SENDER.city, 30, contentY + 25);
+			.text(this.sender.address, 30, contentY + 14)
+			.text(this.sender.city, 30, contentY + 25);
 
 		// Центр
 		doc.fillColor('#a5b4fc')
@@ -316,8 +297,8 @@ export class PdfService {
 		doc.fillColor(COLORS.border)
 			.fontSize(7)
 			.font('Helvetica')
-			.text(SENDER.email, W - 180, contentY + 6, { width: 150, align: 'right' })
-			.text(SENDER.phone, W - 180, contentY + 19, { width: 150, align: 'right' });
+			.text(this.sender.email, W - 180, contentY + 6, { width: 150, align: 'right' })
+			.text(this.sender.phone, W - 180, contentY + 19, { width: 150, align: 'right' });
 
 		// Разделитель перед копирайтом
 		doc.moveTo(30, footerY + FOOTER_H - 42)
@@ -331,7 +312,7 @@ export class PdfService {
 			.fontSize(6)
 			.font('Helvetica')
 			.text(
-				`© ${new Date().getFullYear()} ${SENDER.name}. All rights reserved.`,
+				`© ${new Date().getFullYear()} ${this.sender.name}. All rights reserved.`,
 				30,
 				footerY + FOOTER_H - 28,
 				{ width: W - 60, align: 'center' },

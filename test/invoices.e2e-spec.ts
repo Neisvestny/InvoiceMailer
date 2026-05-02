@@ -1,8 +1,11 @@
+import { BullRegistrar } from '@nestjs/bullmq';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
+import { QueueModule } from '../src/modules/queue/queue.module';
+import { MockQueueModule } from './mocks/queue.module';
 
 describe('InvoicesController (e2e)', () => {
 	let app: INestApplication<App>;
@@ -10,7 +13,12 @@ describe('InvoicesController (e2e)', () => {
 	beforeEach(async () => {
 		const moduleFixture: TestingModule = await Test.createTestingModule({
 			imports: [AppModule],
-		}).compile();
+		})
+			.overrideModule(QueueModule)
+			.useModule(MockQueueModule)
+			.overrideProvider(BullRegistrar)
+			.useValue({ register: jest.fn() })
+			.compile();
 
 		app = moduleFixture.createNestApplication();
 		app.useGlobalPipes(

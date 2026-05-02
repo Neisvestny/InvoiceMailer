@@ -1,7 +1,8 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Job } from 'bullmq';
-import { createTransport } from 'nodemailer';
+import { createTransport, Transporter } from 'nodemailer';
 import { PrismaService } from '../../database/prisma.service';
 import { EMAIL_QUEUE } from '../queue.module';
 import { EmailJobPayload } from '../queue.types';
@@ -9,19 +10,22 @@ import { EmailJobPayload } from '../queue.types';
 @Processor(EMAIL_QUEUE)
 export class EmailWorker extends WorkerHost {
 	private readonly logger = new Logger(EmailWorker.name);
+	private readonly transporter: Transporter;
 
-	private readonly transporter = createTransport({
-		host: process.env.SMTP_HOST,
-		port: Number(process.env.SMTP_PORT ?? 587),
-		secure: process.env.SMTP_SECURE === 'true',
-		auth: {
-			user: process.env.SMTP_USER,
-			pass: process.env.SMTP_PASS,
-		},
-	});
-
-	constructor(private readonly prisma: PrismaService) {
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly config: ConfigService,
+	) {
 		super();
+		this.transporter = createTransport({
+			host: this.config.get<string>('SMTP_HOST'),
+			port: this.config.get<number>('SMTP_PORT'),
+			secure: this.config.get<boolean>('SMTP_SECURE'),
+			auth: {
+				user: this.config.get<string>('SMTP_USER'),
+				pass: this.config.get<string>('SMTP_PASS'),
+			},
+		});
 	}
 
 	async process(job: Job<EmailJobPayload>): Promise<void> {
@@ -31,7 +35,7 @@ export class EmailWorker extends WorkerHost {
 
 		try {
 			await this.transporter.sendMail({
-				from: `"InvoiceMailer" <${process.env.SMTP_USER}>`,
+				from: `"${this.config.get('sender.name')}" <${this.config.get('sender.email')}>`,
 				to: email,
 				subject: `Invoice ${invoiceNumber}`,
 				text: `Please find attached your invoice ${invoiceNumber}.`,

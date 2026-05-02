@@ -9,49 +9,24 @@ const adapter = new PrismaPg({
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-	// Очистка (опционально)
 	await prisma.invoiceLog.deleteMany();
-	await prisma.company.deleteMany();
 	await prisma.client.deleteMany();
+	await prisma.company.deleteMany();
 
-	// Создаём клиента + компанию
-	const client = await prisma.client.create({
+	const company = await prisma.company.create({
+		data: {
+			name: 'Acme Corp',
+			address: 'Somewhere 123',
+		},
+	});
+
+	await prisma.client.create({
 		data: {
 			email: 'john.doe@example.com',
 			firstName: 'John',
 			lastName: 'Doe',
-			company: {
-				create: {
-					name: 'Acme Corp',
-					address: 'Somewhere 123',
-				},
-			},
+			companyId: company.id,
 		},
-		include: {
-			company: true,
-		},
-	});
-
-	// Логи инвойсов
-	await prisma.invoiceLog.createMany({
-		data: [
-			{
-				email: client.email,
-				payload: {
-					amount: 100,
-					currency: 'USD',
-				},
-				status: 'RECEIVED',
-			},
-			{
-				email: client.email,
-				payload: {
-					amount: 100,
-					currency: 'USD',
-				},
-				status: 'SENT',
-			},
-		],
 	});
 
 	console.log('🌱 Seed completed');

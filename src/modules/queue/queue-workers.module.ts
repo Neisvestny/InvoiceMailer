@@ -1,4 +1,3 @@
-// src/modules/queue/queue-workers.module.ts
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import { PdfModule } from '../pdf/pdf.module';

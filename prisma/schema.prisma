@@ -13,18 +13,18 @@ model Client {
   firstName String
   lastName  String
 
-  company   Company?
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
 
   createdAt DateTime @default(now())
 }
 
 model Company {
-  id        String  @id @default(uuid())
+  id        String   @id @default(uuid())
   name      String
   address   String
 
-  clientId  String  @unique
-  client    Client  @relation(fields: [clientId], references: [id])
+  clients   Client[]
 
   createdAt DateTime @default(now())
 }

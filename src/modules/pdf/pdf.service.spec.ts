@@ -1,5 +1,7 @@
+import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
-import { InvoiceData, PdfService } from './pdf.service';
+import { InvoiceData } from '../../types';
+import { PdfService } from './pdf.service';
 
 const mockInvoiceData: InvoiceData = {
 	invoiceNumber: 'INV-202505-ABCDEF12',
@@ -25,7 +27,30 @@ describe('PdfService', () => {
 
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
-			providers: [PdfService],
+			providers: [
+				PdfService,
+				{
+					provide: ConfigService,
+					useValue: {
+						get: jest.fn().mockImplementation((key: string) => {
+							if (key === 'sender') {
+								return {
+									brand: 'Test Brand',
+									name: 'Test Sender',
+									address: 'Test Address 123',
+									city: 'Test City',
+									email: 'test@example.com',
+									phone: '+123456789',
+								};
+							}
+							if (key === 'NODE_ENV') {
+								return 'test';
+							}
+							return null;
+						}),
+					},
+				},
+			],
 		}).compile();
 
 		service = module.get<PdfService>(PdfService);

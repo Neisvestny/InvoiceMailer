@@ -1,9 +1,8 @@
-// src/modules/queue/queue.types.ts
 export interface PdfJobPayload {
 	logId: string;
 	email: string;
 	invoiceNumber: string;
-	issuedAt: string; // ISO string — сериализуется в Redis
+	issuedAt: string;
 	items: Array<{ description: string; amount: number }>;
 	total: number;
 	client: {
@@ -18,5 +17,5 @@ export interface EmailJobPayload {
 	logId: string;
 	email: string;
 	invoiceNumber: string;
-	pdfBase64: string; // Buffer не сериализуется в Redis
+	pdfBase64: string;
 }
