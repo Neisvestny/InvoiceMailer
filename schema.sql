@@ -4,6 +4,7 @@ CREATE TABLE "Client" (
     "email" TEXT NOT NULL,
     "firstName" TEXT NOT NULL,
     "lastName" TEXT NOT NULL,
+    "companyId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Client_pkey" PRIMARY KEY ("id")
@@ -14,7 +15,6 @@ CREATE TABLE "Company" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "address" TEXT NOT NULL,
-    "clientId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Company_pkey" PRIMARY KEY ("id")
@@ -34,8 +34,5 @@ CREATE TABLE "InvoiceLog" (
 -- CreateIndex
 CREATE UNIQUE INDEX "Client_email_key" ON "Client"("email");
 
--- CreateIndex
-CREATE UNIQUE INDEX "Company_clientId_key" ON "Company"("clientId");
-
 -- AddForeignKey
-ALTER TABLE "Company" ADD CONSTRAINT "Company_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "Client"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Client" ADD CONSTRAINT "Client_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company"("id") ON DELETE SET NULL ON UPDATE CASCADE;
