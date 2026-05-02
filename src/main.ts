@@ -19,14 +19,16 @@ async function bootstrap() {
 
 	app.useGlobalFilters(new AllExceptionsFilter());
 
-	const swaggerConfig = new DocumentBuilder()
-		.setTitle('InvoiceMailer API')
-		.setDescription('API for generating and sending invoices via email')
-		.setVersion('1.0')
-		.build();
+	if (config.get<string>('NODE_ENV') == 'development') {
+		const swaggerConfig = new DocumentBuilder()
+			.setTitle('InvoiceMailer API')
+			.setDescription('API for generating and sending invoices via email')
+			.setVersion('1.0')
+			.build();
 
-	const document = SwaggerModule.createDocument(app, swaggerConfig);
-	SwaggerModule.setup('api/docs', app, document);
+		const document = SwaggerModule.createDocument(app, swaggerConfig);
+		SwaggerModule.setup('api/docs', app, document);
+	}
 
 	app.enableShutdownHooks();
 

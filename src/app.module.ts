@@ -1,7 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { envValidationSchema } from './config/env.validation';
 import { senderConfig } from './config/sender.config';
 import { ClientsModule } from './modules/clients/clients.module';
@@ -30,7 +28,5 @@ import { SenderModule } from './modules/sender/sender.module';
 		CompaniesModule,
 		SenderModule,
 	],
-	controllers: [AppController],
-	providers: [AppService],
 })
 export class AppModule {}
