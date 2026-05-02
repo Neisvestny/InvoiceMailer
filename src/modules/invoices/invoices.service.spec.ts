@@ -1,6 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../database/prisma.service';
+import { InvoiceData, PdfService } from '../pdf/pdf.service';
 import { CreateInvoiceDto, InvoiceItemDto } from './dto/create-invoice.dto';
 import { InvoicesService } from './invoices.service';
 
@@ -27,6 +28,8 @@ const mockLog = {
 	createdAt: new Date(),
 };
 
+const mockPdfBuffer = Buffer.from('%PDF-mock');
+
 const mockPrisma = {
 	invoiceLog: {
 		create: jest.fn(),
@@ -37,12 +40,21 @@ const mockPrisma = {
 	},
 };
 
+const mockPdfService = {
+	generateInvoicePdf: jest.fn(),
+	saveForPreview: jest.fn(),
+};
+
 describe('InvoicesService', () => {
 	let service: InvoicesService;
 
 	beforeEach(async () => {
 		const module: TestingModule = await Test.createTestingModule({
-			providers: [InvoicesService, { provide: PrismaService, useValue: mockPrisma }],
+			providers: [
+				InvoicesService,
+				{ provide: PrismaService, useValue: mockPrisma },
+				{ provide: PdfService, useValue: mockPdfService },
+			],
 		}).compile();
 
 		service = module.get<InvoicesService>(InvoicesService);
@@ -62,9 +74,11 @@ describe('InvoicesService', () => {
 	};
 
 	describe('create', () => {
-		it('should log request, fetch client and return invoice data', async () => {
+		it('should log request, fetch client, generate PDF and return invoice data', async () => {
 			mockPrisma.invoiceLog.create.mockResolvedValue(mockLog);
 			mockPrisma.client.findUnique.mockResolvedValue(mockClient);
+			mockPrisma.invoiceLog.update.mockResolvedValue({ ...mockLog, status: 'PDF_GENERATED' });
+			mockPdfService.generateInvoicePdf.mockResolvedValue(mockPdfBuffer);
 
 			const result = await service.create(makeDto());
 
@@ -81,10 +95,30 @@ describe('InvoicesService', () => {
 				include: { company: true },
 			});
 
+			expect(mockPdfService.generateInvoicePdf).toHaveBeenCalledWith(
+				expect.objectContaining<InvoiceData>({
+					invoiceNumber: expect.stringMatching(/^INV-\d{6}-[A-F0-9]{8}$/) as string,
+					issuedAt: expect.any(Date) as Date,
+					items: expect.any(Array) as InvoiceData['items'],
+					client: expect.objectContaining({
+						firstName: 'John',
+						lastName: 'Doe',
+						email: 'john.doe@example.com',
+					}) as InvoiceData['client'],
+					total: 150,
+				}),
+			);
+
+			expect(mockPrisma.invoiceLog.update).toHaveBeenCalledWith({
+				where: { id: mockLog.id },
+				data: { status: 'PDF_GENERATED' },
+			});
+
 			expect(result.invoiceNumber).toMatch(/^INV-\d{6}-[A-F0-9]{8}$/);
 			expect(result.total).toBe(150);
 			expect(result.client).toBe(mockClient);
 			expect(result.logId).toBe(mockLog.id);
+			expect(result.pdfBuffer).toBe(mockPdfBuffer);
 		});
 
 		it('should mark log as FAILED and throw NotFoundException when client not found', async () => {
@@ -97,11 +131,15 @@ describe('InvoicesService', () => {
 				where: { id: mockLog.id },
 				data: { status: 'FAILED' },
 			});
+
+			expect(mockPdfService.generateInvoicePdf).not.toHaveBeenCalled();
 		});
 
 		it('should correctly sum multiple items', async () => {
 			mockPrisma.invoiceLog.create.mockResolvedValue(mockLog);
 			mockPrisma.client.findUnique.mockResolvedValue(mockClient);
+			mockPrisma.invoiceLog.update.mockResolvedValue({ ...mockLog, status: 'PDF_GENERATED' });
+			mockPdfService.generateInvoicePdf.mockResolvedValue(mockPdfBuffer);
 
 			const item2 = new InvoiceItemDto();
 			item2.description = 'Landing page';
