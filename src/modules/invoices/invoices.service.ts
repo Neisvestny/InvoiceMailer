@@ -1,6 +1,9 @@
+import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Queue } from 'bullmq';
 import { PrismaService } from '../database/prisma.service';
-import { PdfService } from '../pdf/pdf.service';
+import { PDF_QUEUE } from '../queue/queue.module';
+import { PdfJobPayload } from '../queue/queue.types';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 
 @Injectable()
@@ -9,7 +12,7 @@ export class InvoicesService {
 
 	constructor(
 		private readonly prisma: PrismaService,
-		private readonly pdfService: PdfService,
+		@InjectQueue(PDF_QUEUE) private readonly pdfQueue: Queue,
 	) {}
 
 	async create(dto: CreateInvoiceDto) {
@@ -42,14 +45,15 @@ export class InvoicesService {
 		}
 
 		const invoiceNumber = this.generateInvoiceNumber(log.id);
-		const issuedAt = new Date();
 		const total = dto.items.reduce((sum, item) => sum + item.amount, 0);
 
-		this.logger.log(`Invoice number generated: ${invoiceNumber}`);
-
-		const pdfBuffer = await this.pdfService.generateInvoicePdf({
+		const payload: PdfJobPayload = {
+			logId: log.id,
+			email: dto.email,
 			invoiceNumber,
-			issuedAt,
+			issuedAt: new Date().toISOString(),
+			items: dto.items,
+			total,
 			client: {
 				firstName: client.firstName,
 				lastName: client.lastName,
@@ -58,28 +62,16 @@ export class InvoicesService {
 					? { name: client.company.name, address: client.company.address }
 					: null,
 			},
-			items: dto.items,
-			total,
-		});
-
-		await this.pdfService.saveForPreview(pdfBuffer, `${invoiceNumber}.pdf`);
-
-		await this.prisma.invoiceLog.update({
-			where: { id: log.id },
-			data: { status: 'PDF_GENERATED' },
-		});
-
-		this.logger.log(`PDF generated for invoice ${invoiceNumber} [${pdfBuffer.length} bytes]`);
-
-		return {
-			invoiceNumber,
-			client,
-			items: dto.items,
-			total,
-			issuedAt,
-			logId: log.id,
-			pdfBuffer,
 		};
+
+		await this.pdfQueue.add('generate-pdf', payload, {
+			attempts: 3,
+			backoff: { type: 'exponential', delay: 3000 },
+		});
+
+		this.logger.log(`PDF job queued for invoice ${invoiceNumber}`);
+
+		return { message: 'Invoice accepted', email: dto.email };
 	}
 
 	private generateInvoiceNumber(logId: string): string {

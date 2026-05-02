@@ -1,7 +1,8 @@
+import { getQueueToken } from '@nestjs/bullmq';
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../database/prisma.service';
-import { InvoiceData, PdfService } from '../pdf/pdf.service';
+import { PDF_QUEUE } from '../queue/queue.module';
 import { CreateInvoiceDto, InvoiceItemDto } from './dto/create-invoice.dto';
 import { InvoicesService } from './invoices.service';
 
@@ -28,8 +29,6 @@ const mockLog = {
 	createdAt: new Date(),
 };
 
-const mockPdfBuffer = Buffer.from('%PDF-mock');
-
 const mockPrisma = {
 	invoiceLog: {
 		create: jest.fn(),
@@ -40,9 +39,8 @@ const mockPrisma = {
 	},
 };
 
-const mockPdfService = {
-	generateInvoicePdf: jest.fn(),
-	saveForPreview: jest.fn(),
+const mockPdfQueue = {
+	add: jest.fn(),
 };
 
 describe('InvoicesService', () => {
@@ -53,7 +51,7 @@ describe('InvoicesService', () => {
 			providers: [
 				InvoicesService,
 				{ provide: PrismaService, useValue: mockPrisma },
-				{ provide: PdfService, useValue: mockPdfService },
+				{ provide: getQueueToken(PDF_QUEUE), useValue: mockPdfQueue },
 			],
 		}).compile();
 
@@ -74,11 +72,10 @@ describe('InvoicesService', () => {
 	};
 
 	describe('create', () => {
-		it('should log request, fetch client, generate PDF and return invoice data', async () => {
+		it('should log request, fetch client, enqueue PDF job and return accepted message', async () => {
 			mockPrisma.invoiceLog.create.mockResolvedValue(mockLog);
 			mockPrisma.client.findUnique.mockResolvedValue(mockClient);
-			mockPrisma.invoiceLog.update.mockResolvedValue({ ...mockLog, status: 'PDF_GENERATED' });
-			mockPdfService.generateInvoicePdf.mockResolvedValue(mockPdfBuffer);
+			mockPdfQueue.add.mockResolvedValue({ id: 'job-1' });
 
 			const result = await service.create(makeDto());
 
@@ -95,30 +92,18 @@ describe('InvoicesService', () => {
 				include: { company: true },
 			});
 
-			expect(mockPdfService.generateInvoicePdf).toHaveBeenCalledWith(
-				expect.objectContaining<InvoiceData>({
+			expect(mockPdfQueue.add).toHaveBeenCalledWith(
+				'generate-pdf',
+				expect.objectContaining({
+					logId: mockLog.id,
+					email: 'john.doe@example.com',
 					invoiceNumber: expect.stringMatching(/^INV-\d{6}-[A-F0-9]{8}$/) as string,
-					issuedAt: expect.any(Date) as Date,
-					items: expect.any(Array) as InvoiceData['items'],
-					client: expect.objectContaining({
-						firstName: 'John',
-						lastName: 'Doe',
-						email: 'john.doe@example.com',
-					}) as InvoiceData['client'],
 					total: 150,
 				}),
+				expect.any(Object),
 			);
 
-			expect(mockPrisma.invoiceLog.update).toHaveBeenCalledWith({
-				where: { id: mockLog.id },
-				data: { status: 'PDF_GENERATED' },
-			});
-
-			expect(result.invoiceNumber).toMatch(/^INV-\d{6}-[A-F0-9]{8}$/);
-			expect(result.total).toBe(150);
-			expect(result.client).toBe(mockClient);
-			expect(result.logId).toBe(mockLog.id);
-			expect(result.pdfBuffer).toBe(mockPdfBuffer);
+			expect(result).toEqual({ message: 'Invoice accepted', email: 'john.doe@example.com' });
 		});
 
 		it('should mark log as FAILED and throw NotFoundException when client not found', async () => {
@@ -132,14 +117,13 @@ describe('InvoicesService', () => {
 				data: { status: 'FAILED' },
 			});
 
-			expect(mockPdfService.generateInvoicePdf).not.toHaveBeenCalled();
+			expect(mockPdfQueue.add).not.toHaveBeenCalled();
 		});
 
-		it('should correctly sum multiple items', async () => {
+		it('should correctly sum multiple items in job payload', async () => {
 			mockPrisma.invoiceLog.create.mockResolvedValue(mockLog);
 			mockPrisma.client.findUnique.mockResolvedValue(mockClient);
-			mockPrisma.invoiceLog.update.mockResolvedValue({ ...mockLog, status: 'PDF_GENERATED' });
-			mockPdfService.generateInvoicePdf.mockResolvedValue(mockPdfBuffer);
+			mockPdfQueue.add.mockResolvedValue({ id: 'job-2' });
 
 			const item2 = new InvoiceItemDto();
 			item2.description = 'Landing page';
@@ -148,8 +132,13 @@ describe('InvoicesService', () => {
 			const dto = makeDto();
 			dto.items.push(item2);
 
-			const result = await service.create(dto);
-			expect(result.total).toBe(450);
+			await service.create(dto);
+
+			expect(mockPdfQueue.add).toHaveBeenCalledWith(
+				'generate-pdf',
+				expect.objectContaining({ total: 450 }),
+				expect.any(Object),
+			);
 		});
 	});
 });
