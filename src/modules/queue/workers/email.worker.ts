@@ -1,8 +1,10 @@
+// FIXME: Замечание (nice to have): pdfBase64 в payload job удваивает размер в Redis; для учебного объёма нормально, но для роста — хранение файла во внешнем сторе и передача ссылки/ключ в job (мотивация: память Redis и лимиты сообщений).
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Job } from 'bullmq';
 import { createTransport, Transporter } from 'nodemailer';
+import { InvoiceLogStatus } from '../../../common/constants/invoice-status';
 import { PrismaService } from '../../database/prisma.service';
 import { EMAIL_QUEUE } from '../queue.module';
 import { EmailJobPayload } from '../queue.types';
@@ -50,7 +52,7 @@ export class EmailWorker extends WorkerHost {
 
 			await this.prisma.invoiceLog.update({
 				where: { id: logId },
-				data: { status: 'SENT' },
+				data: { status: InvoiceLogStatus.SENT },
 			});
 
 			this.logger.log(`Invoice ${invoiceNumber} sent to ${email}`);
@@ -58,7 +60,7 @@ export class EmailWorker extends WorkerHost {
 			this.logger.error(`Email sending failed for ${invoiceNumber}`, error);
 			await this.prisma.invoiceLog.update({
 				where: { id: logId },
-				data: { status: 'FAILED' },
+				data: { status: InvoiceLogStatus.FAILED },
 			});
 			throw error;
 		}

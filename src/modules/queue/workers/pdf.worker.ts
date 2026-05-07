@@ -1,6 +1,8 @@
 import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job, Queue } from 'bullmq';
+import { InvoiceLogStatus } from '../../../common/constants/invoice-status';
+import { QUEUE_CONFIG } from '../../../common/constants/queue';
 import { PrismaService } from '../../database/prisma.service';
 import { PdfService } from '../../pdf/pdf.service';
 import { EMAIL_QUEUE, PDF_QUEUE } from '../queue.module';
@@ -36,7 +38,7 @@ export class PdfWorker extends WorkerHost {
 
 			await this.prisma.invoiceLog.update({
 				where: { id: logId },
-				data: { status: 'PDF_GENERATED' },
+				data: { status: InvoiceLogStatus.PDF_GENERATED },
 			});
 
 			this.logger.log(`PDF generated for ${invoiceNumber} [${pdfBuffer.length} bytes]`);
@@ -49,14 +51,14 @@ export class PdfWorker extends WorkerHost {
 			};
 
 			await this.emailQueue.add('send-email', emailPayload, {
-				attempts: 3,
-				backoff: { type: 'exponential', delay: 5000 },
+				attempts: QUEUE_CONFIG.DEFAULT_OPTIONS.ATTEMPTS,
+				backoff: { type: 'exponential', delay: QUEUE_CONFIG.EMAIL_JOB.BACKOFF_DELAY_MS },
 			});
 		} catch (error) {
 			this.logger.error(`PDF generation failed for ${invoiceNumber}`, error);
 			await this.prisma.invoiceLog.update({
 				where: { id: logId },
-				data: { status: 'FAILED' },
+				data: { status: InvoiceLogStatus.FAILED },
 			});
 			throw error;
 		}

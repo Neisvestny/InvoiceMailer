@@ -14,8 +14,8 @@ import { SenderModule } from './modules/sender/sender.module';
 	imports: [
 		ConfigModule.forRoot({
 			isGlobal: true,
-			load: [senderConfig],
 			validationSchema: envValidationSchema,
+			load: [senderConfig],
 			validationOptions: {
 				abortEarly: true,
 			},

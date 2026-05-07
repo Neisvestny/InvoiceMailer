@@ -1,7 +1,8 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+// TODO: Рефакторить pdf.service.ts: вместо PDFKit использовать шаблонизатор (EJS/Pug) для удобства поддержки и дизайна.
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import PDFDocument from 'pdfkit';
-import { InvoiceData, SenderConfig } from '../../types';
+import { InvoiceData, SenderConfig } from './types';
 
 const COLORS = {
 	primary: '#1a1a2e',
@@ -18,14 +19,20 @@ export class PdfService {
 	private readonly logger = new Logger(PdfService.name);
 	private readonly sender: SenderConfig;
 
-	constructor(@Inject(ConfigService) private readonly config: ConfigService) {
-		this.sender = this.config.get<SenderConfig>('sender')!;
+	constructor(private readonly configService: ConfigService) {
+		const sender = this.configService.get<SenderConfig>('sender');
+
+		if (!sender) {
+			throw new Error('Sender config not loaded');
+		}
+
+		this.sender = sender;
 	}
 
 	private calculateHeight(itemCount: number): number {
-		const HEADER_H = 200; // шапка + FROM блок
+		const HEADER_H = 200; // Header + sender section
 		const DIVIDER_H = 24;
-		const BILLING_H = 100; // BILL TO секция
+		const BILLING_H = 100; // Billing section
 		const TABLE_HEADER_H = 40;
 		const ROW_H = 28;
 		const TOTAL_H = 70;
@@ -65,7 +72,7 @@ export class PdfService {
 	}
 
 	async saveForPreview(buffer: Buffer, filename: string): Promise<void> {
-		if (this.config.get<string>('NODE_ENV') !== 'development') return;
+		if (this.configService.get<string>('NODE_ENV') !== 'development') return;
 
 		const fs = await import('fs/promises');
 		const path = await import('path');

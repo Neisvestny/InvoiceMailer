@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
-import { InvoiceData } from '../../types';
 import { PdfService } from './pdf.service';
+import { InvoiceData } from './types';
 
 const mockInvoiceData: InvoiceData = {
 	invoiceNumber: 'INV-202505-ABCDEF12',

@@ -19,7 +19,7 @@ async function bootstrap() {
 
 	app.useGlobalFilters(new AllExceptionsFilter());
 
-	if (config.get<string>('NODE_ENV') == 'development') {
+	if (config.get<string>('NODE_ENV') === 'development') {
 		const swaggerConfig = new DocumentBuilder()
 			.setTitle('InvoiceMailer API')
 			.setDescription('API for generating and sending invoices via email')

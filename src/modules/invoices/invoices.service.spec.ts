@@ -1,6 +1,7 @@
 import { getQueueToken } from '@nestjs/bullmq';
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { InvoiceLogStatus } from '../../common/constants/invoice-status';
 import { PrismaService } from '../database/prisma.service';
 import { PDF_QUEUE } from '../queue/queue.module';
 import { CreateInvoiceDto, InvoiceItemDto } from './dto/create-invoice.dto';
@@ -25,7 +26,7 @@ const mockLog = {
 	id: 'abcdef12-0000-0000-0000-000000000000',
 	email: 'john.doe@example.com',
 	payload: {},
-	status: 'RECEIVED',
+	status: InvoiceLogStatus.RECEIVED,
 	createdAt: new Date(),
 };
 
@@ -83,7 +84,7 @@ describe('InvoicesService', () => {
 				data: {
 					email: 'john.doe@example.com',
 					payload: { items: [{ description: 'Logo design', amount: 150 }] },
-					status: 'RECEIVED',
+					status: InvoiceLogStatus.RECEIVED,
 				},
 			});
 
@@ -114,7 +115,7 @@ describe('InvoicesService', () => {
 
 			expect(mockPrisma.invoiceLog.update).toHaveBeenCalledWith({
 				where: { id: mockLog.id },
-				data: { status: 'FAILED' },
+				data: { status: InvoiceLogStatus.FAILED },
 			});
 
 			expect(mockPdfQueue.add).not.toHaveBeenCalled();

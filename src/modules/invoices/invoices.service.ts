@@ -1,6 +1,8 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Queue } from 'bullmq';
+import { InvoiceLogStatus } from '../../common/constants/invoice-status';
+import { QUEUE_CONFIG } from '../../common/constants/queue';
 import { PrismaService } from '../database/prisma.service';
 import { PDF_QUEUE } from '../queue/queue.module';
 import { PdfJobPayload } from '../queue/queue.types';
@@ -25,7 +27,7 @@ export class InvoicesService {
 						amount: item.amount,
 					})),
 				},
-				status: 'RECEIVED',
+				status: InvoiceLogStatus.RECEIVED,
 			},
 		});
 
@@ -39,7 +41,7 @@ export class InvoicesService {
 		if (!client) {
 			await this.prisma.invoiceLog.update({
 				where: { id: log.id },
-				data: { status: 'FAILED' },
+				data: { status: InvoiceLogStatus.FAILED },
 			});
 			throw new NotFoundException(`Client with email ${dto.email} not found`);
 		}
@@ -65,8 +67,11 @@ export class InvoicesService {
 		};
 
 		await this.pdfQueue.add('generate-pdf', payload, {
-			attempts: 3,
-			backoff: { type: 'exponential', delay: 3000 },
+			attempts: QUEUE_CONFIG.DEFAULT_OPTIONS.ATTEMPTS,
+			backoff: {
+				type: 'exponential',
+				delay: QUEUE_CONFIG.PDF_JOB.BACKOFF_DELAY_MS,
+			},
 		});
 
 		this.logger.log(`PDF job queued for invoice ${invoiceNumber}`);

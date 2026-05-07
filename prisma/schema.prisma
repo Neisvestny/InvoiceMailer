@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client-js"
-  previewFeatures = ["driverAdapters"]
+  moduleFormat = "cjs"
 }
 
 datasource db {
@@ -33,7 +33,17 @@ model InvoiceLog {
   id        String   @id @default(uuid())
   email     String
   payload   Json
-  status    String   // RECEIVED | PDF_GENERATED | SENT | FAILED
+  status    InvoiceLogStatus @default(RECEIVED)
 
   createdAt DateTime @default(now())
+}
+
+enum InvoiceLogStatus {
+  RECEIVED
+  PDF_GENERATION_STARTED
+  PDF_GENERATED
+  PDF_GENERATION_FAILED
+  EMAIL_SENDING_STARTED
+  SENT
+  FAILED
 }

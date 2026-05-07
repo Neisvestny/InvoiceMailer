@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { SenderConfig } from '../../types';
+import { SenderConfig } from '../pdf/types';
 
 @Injectable()
 export class SenderService {

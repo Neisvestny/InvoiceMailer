@@ -1,0 +1,14 @@
+export const QUEUE_CONFIG = {
+	DEFAULT_OPTIONS: {
+		ATTEMPTS: 3,
+		TIMEOUT_MS: 30000,
+	},
+
+	PDF_JOB: {
+		BACKOFF_DELAY_MS: 3000,
+	},
+
+	EMAIL_JOB: {
+		BACKOFF_DELAY_MS: 5000,
+	},
+} as const;
