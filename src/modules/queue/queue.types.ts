@@ -17,5 +17,5 @@ export interface EmailJobPayload {
 	logId: string;
 	email: string;
 	invoiceNumber: string;
-	pdfBase64: string;
+	pdfPath: string;
 }

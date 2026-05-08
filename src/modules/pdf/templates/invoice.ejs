@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: Helvetica, Arial, sans-serif;
+      color: #111827;
+      background: #fff;
+      width: 519px;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: #1a1a2e;
+      padding: 23px 50px 0;
+      height: 90px;
+      position: relative;
+    }
+    .header__brand {
+      font-size: 26px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .header__invoice-label {
+      position: absolute;
+      right: 50px;
+      top: 60px;
+      font-size: 10px;
+      color: #a5b4fc;
+      text-align: right;
+    }
+    .header__invoice-number {
+      position: absolute;
+      right: 10px;
+      top: 70px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+      text-align: right;
+      width: 190px;
+    }
+
+    /* ── Sender + date ── */
+    .meta {
+      padding: 20px 50px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .meta__label {
+      font-size: 9px;
+      color: #6b7280;
+      margin-bottom: 4px;
+    }
+    .meta__name {
+      font-size: 11px;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 4px;
+    }
+    .meta__line {
+      font-size: 9px;
+      color: #6b7280;
+      line-height: 1.6;
+    }
+    .meta__date {
+      font-size: 11px;
+      font-weight: 700;
+      color: #111827;
+      text-align: right;
+    }
+
+    /* ── Divider ── */
+    hr {
+      border: none;
+      border-top: 1px solid #e5e7eb;
+      margin: 0 50px;
+    }
+
+    /* ── Billing ── */
+    .billing {
+      padding: 16px 50px;
+    }
+    .billing__name {
+      font-size: 12px;
+      font-weight: 700;
+      color: #111827;
+      margin-top: 4px;
+      margin-bottom: 6px;
+    }
+    .billing__line {
+      font-size: 9px;
+      color: #6b7280;
+      line-height: 1.6;
+    }
+
+    /* ── Table ── */
+    .items {
+      margin: 8px 50px 0;
+      width: calc(100% - 100px);
+    }
+    .items__head {
+      background: #4f46e5;
+      display: flex;
+      padding: 8px 8px;
+    }
+    .items__head-desc {
+      font-size: 9px;
+      font-weight: 700;
+      color: #fff;
+      flex: 1;
+    }
+    .items__head-amount {
+      font-size: 9px;
+      font-weight: 700;
+      color: #fff;
+      width: 100px;
+      text-align: right;
+    }
+    .items__row {
+      display: flex;
+      padding: 6px 8px;
+      min-height: 28px;
+      align-items: center;
+    }
+    .items__row--even {
+      background: #f9fafb;
+    }
+    .items__row-desc {
+      font-size: 10px;
+      color: #111827;
+      flex: 1;
+    }
+    .items__row-amount {
+      font-size: 10px;
+      color: #111827;
+      width: 100px;
+      text-align: right;
+    }
+
+    /* ── Total ── */
+    .total {
+      display: flex;
+      justify-content: flex-end;
+      padding: 16px 50px 0;
+    }
+    .total__label {
+      font-size: 18px;
+      font-weight: 700;
+      color: #4f46e5;
+      text-align: right;
+    }
+    .total__value {
+      font-size: 18px;
+      color: #111827;
+      text-align: right;
+      margin-top: 6px;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      background: #1a1a2e;
+      margin-top: 24px;
+      padding: 14px 30px 0;
+      height: 110px;
+      position: relative;
+    }
+    .footer::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: #4f46e5;
+    }
+    .footer__grid {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .footer__left-name {
+      font-size: 11px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+    .footer__left-line {
+      font-size: 7px;
+      color: #e5e7eb;
+      line-height: 1.6;
+    }
+    .footer__center {
+      text-align: center;
+    }
+    .footer__center-note {
+      font-size: 7px;
+      color: #a5b4fc;
+      margin-bottom: 4px;
+    }
+    .footer__center-thanks {
+      font-size: 8px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .footer__right {
+      text-align: right;
+    }
+    .footer__right-line {
+      font-size: 7px;
+      color: #e5e7eb;
+      line-height: 1.6;
+    }
+    .footer__divider {
+      border: none;
+      border-top: 0.5px solid #2d2d5e;
+      margin: 8px 0 6px;
+    }
+    .footer__copyright {
+      font-size: 6px;
+      color: #fff;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header__brand"><%= sender.brand %></div>
+    <div class="header__invoice-label">INVOICE</div>
+    <div class="header__invoice-number" data-invoice-number><%= data.invoiceNumber %></div>
+  </div>
+
+  <!-- Sender + date -->
+  <div class="meta">
+    <div>
+      <div class="meta__label">FROM</div>
+      <div class="meta__name"><%= sender.name %></div>
+      <div class="meta__line">
+        <%= sender.address %><br/>
+        <%= sender.city %><br/>
+        <%= sender.email %><br/>
+        <%= sender.phone %>
+      </div>
+    </div>
+    <div>
+      <div class="meta__label" style="text-align:right">ISSUE DATE</div>
+      <div class="meta__date"><%= dateStr %></div>
+    </div>
+  </div>
+
+  <hr/>
+
+  <!-- Billing -->
+  <div class="billing">
+    <div class="meta__label">BILL TO</div>
+    <div class="billing__name"><%= data.client.firstName %> <%= data.client.lastName %></div>
+    <% if (data.client.company) { %>
+      <div class="billing__line"><%= data.client.company.name %></div>
+      <div class="billing__line"><%= data.client.company.address %></div>
+    <% } %>
+    <div class="billing__line"><%= data.client.email %></div>
+  </div>
+
+  <hr/>
+
+  <!-- Items table -->
+  <div class="items">
+    <div class="items__head">
+      <span class="items__head-desc">DESCRIPTION</span>
+      <span class="items__head-amount">AMOUNT</span>
+    </div>
+    <% data.items.forEach(function(item, i) { %>
+      <div class="items__row <%= i % 2 === 0 ? 'items__row--even' : '' %>">
+        <span class="items__row-desc"><%= item.description %></span>
+        <span class="items__row-amount">$<%= item.amount.toFixed(2) %></span>
+      </div>
+    <% }) %>
+  </div>
+
+  <!-- Total -->
+  <div class="total">
+    <div>
+      <div class="total__label">TOTAL DUE</div>
+      <div class="total__value">$<%= data.total.toFixed(2) %></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer__grid">
+      <div>
+        <div class="footer__left-name"><%= sender.name %></div>
+        <div class="footer__left-line"><%= sender.address %><br/><%= sender.city %></div>
+      </div>
+      <div class="footer__center">
+        <div class="footer__center-note">Payment due within 30 days</div>
+        <div class="footer__center-thanks">Thank you for your business!</div>
+      </div>
+      <div class="footer__right">
+        <div class="footer__right-line"><%= sender.email %><br/><%= sender.phone %></div>
+      </div>
+    </div>
+    <hr class="footer__divider"/>
+    <div class="footer__copyright">
+      &copy; <%= new Date().getFullYear() %> <%= sender.name %>. All rights reserved.
+    </div>
+  </div>
+
+</body>
+</html>

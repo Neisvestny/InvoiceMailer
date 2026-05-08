@@ -1,4 +1,4 @@
-// FIXME: Замечание (nice to have): pdfBase64 в payload job удваивает размер в Redis; для учебного объёма нормально, но для роста — хранение файла во внешнем сторе и передача ссылки/ключ в job (мотивация: память Redis и лимиты сообщений).
+import * as fs from 'fs/promises';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -31,9 +31,22 @@ export class EmailWorker extends WorkerHost {
 	}
 
 	async process(job: Job<EmailJobPayload>): Promise<void> {
-		const { logId, email, invoiceNumber, pdfBase64 } = job.data;
+		const { logId, email, invoiceNumber, pdfPath } = job.data;
 
 		this.logger.log(`Sending invoice ${invoiceNumber} to ${email}`);
+
+		let pdfBuffer: Buffer;
+
+		try {
+			pdfBuffer = await fs.readFile(pdfPath);
+		} catch (error) {
+			this.logger.error(`Failed to read PDF file at ${pdfPath}`, error);
+			await this.prisma.invoiceLog.update({
+				where: { id: logId },
+				data: { status: InvoiceLogStatus.FAILED },
+			});
+			throw error;
+		}
 
 		try {
 			await this.transporter.sendMail({
@@ -44,7 +57,7 @@ export class EmailWorker extends WorkerHost {
 				attachments: [
 					{
 						filename: `${invoiceNumber}.pdf`,
-						content: Buffer.from(pdfBase64, 'base64'),
+						content: pdfBuffer,
 						contentType: 'application/pdf',
 					},
 				],
@@ -63,6 +76,11 @@ export class EmailWorker extends WorkerHost {
 				data: { status: InvoiceLogStatus.FAILED },
 			});
 			throw error;
+		} finally {
+			// Удаляем временный файл в любом случае — и при успехе, и при ошибке отправки
+			await fs.unlink(pdfPath).catch((err: unknown) => {
+				this.logger.warn(`Failed to delete temp PDF at ${pdfPath}`, err);
+			});
 		}
 	}
 }

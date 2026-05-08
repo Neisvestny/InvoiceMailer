@@ -1,3 +1,6 @@
+import * as fs from 'fs/promises';
+import * as os from 'os';
+import * as path from 'path';
 import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job, Queue } from 'bullmq';
@@ -36,6 +39,9 @@ export class PdfWorker extends WorkerHost {
 
 			await this.pdfService.saveForPreview(pdfBuffer, `${invoiceNumber}.pdf`);
 
+			const pdfPath = path.join(os.tmpdir(), `${invoiceNumber}-${Date.now()}.pdf`);
+			await fs.writeFile(pdfPath, pdfBuffer);
+
 			await this.prisma.invoiceLog.update({
 				where: { id: logId },
 				data: { status: InvoiceLogStatus.PDF_GENERATED },
@@ -47,7 +53,7 @@ export class PdfWorker extends WorkerHost {
 				logId,
 				email,
 				invoiceNumber,
-				pdfBase64: pdfBuffer.toString('base64'),
+				pdfPath,
 			};
 
 			await this.emailQueue.add('send-email', emailPayload, {
